@@ -1,16 +1,29 @@
 #!/bin/bash
 
-cd ~/git/casepeer
+program_name=$0
 
+GIT_DIR=
+WORK=/tmp
+FILTER=
+EXTRACT=
 
-export WORK=~/Desktop/casepeer/work
+SSN_EXTRACT='[0-9]{3}-[0-9]{2}-[0-9]{4}'
+PW_EXTRACT='-i password'
+SECRET_EXTRACT='-i secret'
+KEY_EXTRACT='-i key'
 
-pprint() {
-	#params
- 	str=$1
- 	num=$(($2))
- 	v=$(printf "%-${num}s" "$str")
- 	echo "${v// /*}"
+usage() {
+	echo "usage: $program_name [-sh] [-g dir] [-w dir] [-f filter] [-x regex]"
+	echo "	-g 	git directory"
+	echo "	-w 	working directory"
+	echo "	-f 	filter for git log"
+	echo "	-x 	extract regex"
+	echo "	-s 	SSN extract"
+	echo "	-p 	Password extract"
+	echo "	-k 	Key extract"
+	echo " 	-c 	Secret extract"
+	echo "	-h 	print this cruft"
+	echo "Only one type of extract may be performed at a time"
 }
 
 walk_tree() {
@@ -19,7 +32,7 @@ walk_tree() {
 	type=$(git cat-file -t $1)
 	if [ "$type" = "blob" ]; then
 		# echo $2
-		git cat-file -p $1 | egrep '[0-9]{3}-[0-9]{2}-[0-9]{4}' | awk 'match($0, /[0-9]{3}-[0-9]{2}-[0-9]{4}/) { print substr( $0, RSTART, RLENGTH)}'
+		git cat-file -p $1 | egrep $EXTRACT | awk 'match($0, /$EXTRACT/) { print substr( $0, RSTART, RLENGTH)}'
 	else
 		# git cat-file -p $2 | cut -d " " -f 3 | cut -d "	" -f 1
 		subtrees=$(git cat-file -p $1 | cut -d " " -f 3 | cut -d "	" -f 1)
@@ -31,7 +44,7 @@ walk_tree() {
 	fi
 }
 
-while getopts "g:w:f:x:" opt; do
+while getopts "g:w:f:x:sh" opt; do
 	case $opt in
 		g)
 			GIT_DIR=$OPTARG
@@ -47,24 +60,54 @@ while getopts "g:w:f:x:" opt; do
 			;;
 		x)
 			EXTRACT=$OPTARG
-			echo "Extract command is"
+			echo "Extract command is $EXTRACT"
+			;;
+		s)
+			EXTRACT=$SSN_EXTRACT
+			echo "Extracting SSNs"
+			;;
+		h)
+			usage
+			exit
+			;;
+	esac
+done
 
+# make sure GIT_DIR is set
+if [ -z $GIT_DIR ]; then
+	echo "-g is required"
+	usage
+	exit 
+fi
 
+# make sure GIT_DIR is a dir
+if [ -d $GIT_DIR ]; then
+	cd $GIT_DIR
+else
+	echo "$GIT_DIR is not a directory"
+	exit
+fi
+
+# prepare working dir
 if [ -d $WORK ]; then
-	echo 'Work directory already exists'
 	rm $WORK/commit_hashes
 	rm $WORK/tree_hashes
 else
-	echo 'Making work directory'
+	echo 'Making work directory $WORK'
 	mkdir $WORK
 fi
 
-# get the commit hashes that have new_data_migrations
-git log --pretty=tformat:"%H" -- new_data_migrations > $WORK/commit_hashes
+# get the commit hashes that have $filter
+git log --pretty=tformat:"%H" -- $FILTER > $WORK/commit_hashes
 
 # get the trees
 while read line; do
-	git cat-file -p $line^{tree} | grep new_data_migrations | \
+	if [ -z "$FILTER" ]; then
+		EXPAND_FILTER=
+	else
+		EXPAND_FILTER="| grep $FILTER"
+	fi
+	git cat-file -p $line^{tree} ${EXPAND_FILTER} | \
 		cut -d " " -f 3 | cut -d "	" -f 1  >> $WORK/tree_hashes
 done < $WORK/commit_hashes
 	
