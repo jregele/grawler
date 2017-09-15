@@ -17,11 +17,7 @@ usage() {
 	echo "	-g 	git directory"
 	echo "	-w 	working directory"
 	echo "	-f 	filter for git log"
-	echo "	-x 	extract regex"
-	echo "	-s 	SSN extract"
-	echo "	-p 	Password extract"
-	echo "	-k 	Key extract"
-	echo " 	-c 	Secret extract"
+	echo "	-x 	extract: (p) Password, (k) Keys, (c) Secrets, (s) SSN"
 	echo "	-h 	print this cruft"
 	echo "Only one type of extract may be performed at a time"
 }
@@ -31,11 +27,15 @@ walk_tree() {
 	# hash = $1
 	type=$(git cat-file -t $1)
 	if [ "$type" = "blob" ]; then
-		# echo $2
-		blob=$(git cat-file -p $1 | egrep $EXTRACT | \
-			awk "match($0, /$EXTRACT/) { print substr( $0, RSTART, RLENGTH)}")
-		echo "${blob}"
-		# eval "$cmd"
+		if [ $EXTRACT == "s" ]; then
+			git cat-file -p $1 | egrep '[0-9]{3}-[0-9]{2}-[0-9]{4}' | awk 'match($0, /[0-9]{3}-[0-9]{2}-[0-9]{4}/) { print substr( $0, RSTART, RLENGTH)}'
+		elif [ $EXTRACT == "p" ]; then
+			git cat-file -p $1 | egrep -i 'password|pw' | awk 'BEGIN { IGNORE_CASE = 1 } match($0, /password|pw[^,]*,/) { print substr( $0, RSTART, RLENGTH)}'
+		elif [ $EXTRACT == "k" ]; then
+			git cat-file -p $1 | egrep -i 'key' | awk 'match($0, /key[^,]*,/) { print substr( $0, RSTART, RLENGTH)}'
+		elif [ $EXTRACT == "c" ]; then
+			git cat-file -p $1 | egrep -i 'secret' | awk 'match($0, /secret[^,]*,/) { print substr( $0, RSTART, RLENGTH)}'
+		fi
 	else
 		# git cat-file -p $2 | cut -d " " -f 3 | cut -d "	" -f 1
 		subtrees=$(git cat-file -p $1 | cut -d " " -f 3 | cut -d "	" -f 1)
