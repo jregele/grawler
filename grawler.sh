@@ -32,13 +32,14 @@ walk_tree() {
 	type=$(git cat-file -t $1)
 	if [ "$type" = "blob" ]; then
 		# echo $2
-		git cat-file -p $1 | egrep $EXTRACT | awk 'match($0, /$EXTRACT/) { print substr( $0, RSTART, RLENGTH)}'
+		blob=$(git cat-file -p $1 | egrep $EXTRACT | \
+			awk "match($0, /$EXTRACT/) { print substr( $0, RSTART, RLENGTH)}")
+		echo "${blob}"
+		# eval "$cmd"
 	else
 		# git cat-file -p $2 | cut -d " " -f 3 | cut -d "	" -f 1
 		subtrees=$(git cat-file -p $1 | cut -d " " -f 3 | cut -d "	" -f 1)
 		for tree in $subtrees; do
-			# pprint $tree $(($depth+1))
-			# echo $tree
 			walk_tree $tree
 		done
 	fi
@@ -103,12 +104,13 @@ git log --pretty=tformat:"%H" -- $FILTER > $WORK/commit_hashes
 # get the trees
 while read line; do
 	if [ -z "$FILTER" ]; then
-		EXPAND_FILTER=
+		git cat-file -p $line^{tree} | \
+			cut -d " " -f 3 | cut -d "	" -f 1  >> $WORK/tree_hashes
 	else
-		EXPAND_FILTER="| grep $FILTER"
+		git cat-file -p $line^{tree} | grep $FILTER | \
+			cut -d " " -f 3 | cut -d "	" -f 1  >> $WORK/tree_hashes
 	fi
-	git cat-file -p $line^{tree} ${EXPAND_FILTER} | \
-		cut -d " " -f 3 | cut -d "	" -f 1  >> $WORK/tree_hashes
+	
 done < $WORK/commit_hashes
 	
 # iterate through trees looking for blobs
