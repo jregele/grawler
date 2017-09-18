@@ -11,15 +11,43 @@ SSN_EXTRACT='[0-9]{3}-[0-9]{2}-[0-9]{4}'
 PW_EXTRACT='-i password'
 SECRET_EXTRACT='-i secret'
 KEY_EXTRACT='-i key'
+COMMITS=false
+
+SCRIPT_DIR=`pwd -P`
+
 
 usage() {
-	echo "usage: $program_name [-sh] [-g dir] [-w dir] [-f filter] [-x regex]"
+	echo "usage: $program_name [-shC] [-g dir] [-w dir] [-f filter] [-x regex]"
 	echo "	-g 	git directory"
 	echo "	-w 	working directory"
 	echo "	-f 	filter for git log"
 	echo "	-x 	extract: (p) Password, (k) Keys, (c) Secrets, (s) SSN"
 	echo "	-h 	print this cruft"
+	echo "  -C 	print commit hashes"
 	echo "Only one type of extract may be performed at a time"
+}
+
+dump_blob() {
+	# the reason we have to do all this very explicit branching is because if we start evaling,
+	# then the $0 in the awk match statement evals to the global $0, ie the name of the script
+	# but to make things more flexible started using python extractor.py instead of awk
+	# hopefully we can condense this then
+	commit_hash=$1
+	if [ $EXTRACT == "s" ]; then
+		if [ "$COMMITS" = true ]; then
+			git cat-file -p $1 | egrep '[0-9]{3}-[0-9]{2}-[0-9]{4}' | python ${SCRIPT_DIR}/extractor.py --ssn -H $commit_hash
+		else
+			# git cat-file -p $1 | egrep '[0-9]{3}-[0-9]{2}-[0-9]{4}' | awk 'match($0, /[0-9]{3}-[0-9]{2}-[0-9]{4}/) { print substr( $0, RSTART, RLENGTH)}'
+			git cat-file -p $1 | egrep '[0-9]{3}-[0-9]{2}-[0-9]{4}' | python ${SCRIPT_DIR}/extractor.py --ssn
+				# awk 'match($0, /[0-9]{3}-[0-9]{2}-[0-9]{4}/) { print substr( $0, RSTART, RLENGTH)}'
+		fi
+	elif [ $EXTRACT == "p" ]; then
+		git cat-file -p $1 | egrep -i 'password|pw' | awk 'BEGIN { IGNORE_CASE = 1 } match($0, /password|pw[^,]*,/) { print substr( $0, RSTART, RLENGTH)}'
+	elif [ $EXTRACT == "k" ]; then
+		git cat-file -p $1 | egrep -i 'key' | awk 'match($0, /key[^,]*,/) { print substr( $0, RSTART, RLENGTH)}'
+	elif [ $EXTRACT == "c" ]; then
+		git cat-file -p $1 | egrep -i 'secret' | awk 'match($0, /secret[^,]*,/) { print substr( $0, RSTART, RLENGTH)}'
+	fi
 }
 
 walk_tree() {
@@ -27,15 +55,7 @@ walk_tree() {
 	# hash = $1
 	type=$(git cat-file -t $1)
 	if [ "$type" = "blob" ]; then
-		if [ $EXTRACT == "s" ]; then
-			git cat-file -p $1 | egrep '[0-9]{3}-[0-9]{2}-[0-9]{4}' | awk 'match($0, /[0-9]{3}-[0-9]{2}-[0-9]{4}/) { print substr( $0, RSTART, RLENGTH)}'
-		elif [ $EXTRACT == "p" ]; then
-			git cat-file -p $1 | egrep -i 'password|pw' | awk 'BEGIN { IGNORE_CASE = 1 } match($0, /password|pw[^,]*,/) { print substr( $0, RSTART, RLENGTH)}'
-		elif [ $EXTRACT == "k" ]; then
-			git cat-file -p $1 | egrep -i 'key' | awk 'match($0, /key[^,]*,/) { print substr( $0, RSTART, RLENGTH)}'
-		elif [ $EXTRACT == "c" ]; then
-			git cat-file -p $1 | egrep -i 'secret' | awk 'match($0, /secret[^,]*,/) { print substr( $0, RSTART, RLENGTH)}'
-		fi
+		dump_blob $1
 	else
 		# git cat-file -p $2 | cut -d " " -f 3 | cut -d "	" -f 1
 		subtrees=$(git cat-file -p $1 | cut -d " " -f 3 | cut -d "	" -f 1)
@@ -45,7 +65,7 @@ walk_tree() {
 	fi
 }
 
-while getopts "g:w:f:x:sh" opt; do
+while getopts "g:w:f:x:shC" opt; do
 	case $opt in
 		g)
 			GIT_DIR=$OPTARG
@@ -66,6 +86,10 @@ while getopts "g:w:f:x:sh" opt; do
 		s)
 			EXTRACT=$SSN_EXTRACT
 			echo "Extracting SSNs"
+			;;
+		C)
+			COMMITS=true
+			echo "Printing commit hashes"
 			;;
 		h)
 			usage
