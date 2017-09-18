@@ -42,11 +42,11 @@ dump_blob() {
 				# awk 'match($0, /[0-9]{3}-[0-9]{2}-[0-9]{4}/) { print substr( $0, RSTART, RLENGTH)}'
 		fi
 	elif [ $EXTRACT == "p" ]; then
-		git cat-file -p $1 | egrep -i 'password|pw' | awk 'BEGIN { IGNORE_CASE = 1 } match($0, /password|pw[^,]*,/) { print substr( $0, RSTART, RLENGTH)}'
+		git cat-file -p $1 | egrep -i 'password|pw' | python ${SCRIPT_DIR}/extractor.py --password
 	elif [ $EXTRACT == "k" ]; then
-		git cat-file -p $1 | egrep -i 'key' | awk 'match($0, /key[^,]*,/) { print substr( $0, RSTART, RLENGTH)}'
+		git cat-file -p $1 | egrep -i 'key' | python ${SCRIPT_DIR}/extractor.py --key
 	elif [ $EXTRACT == "c" ]; then
-		git cat-file -p $1 | egrep -i 'secret' | awk 'match($0, /secret[^,]*,/) { print substr( $0, RSTART, RLENGTH)}'
+		git cat-file -p $1 | egrep -i 'secret' | python ${SCRIPT_DIR}/extractor.py --secret
 	fi
 }
 
