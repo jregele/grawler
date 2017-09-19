@@ -1,6 +1,6 @@
 # Grawler
 
-grawler.sh recursively walks object trees in a git database searching for passwords, secrets, keys, and other sensitive information. It runs using git plumbing commands and can walk either from refs accumulated from git log, or from walking git pack files.
+grawler.sh recursively walks object trees in a git database searching for "deleted" passwords, secrets, keys, and other sensitive information. It runs using git plumbing commands and can walk either from refs accumulated from git log, or from walking git pack files.
 
 ### Usage
 
