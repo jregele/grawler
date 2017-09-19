@@ -145,7 +145,7 @@ else
 fi
 
 # are we searching for a which commit?
-if [[ $OBJECT_HASH -ne '' ]]; then
+if [ -n $OBJECT_HASH ]; then
 	which_commit $OBJECT_HASH
 	exit
 fi
