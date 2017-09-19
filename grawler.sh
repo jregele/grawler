@@ -26,7 +26,7 @@ usage() {
 	echo "	-f 	filter for git log"
 	echo "	-x 	extract: (p) Password, (k) Keys, (c) Secrets, (s) SSN"
 	echo "	-h 	print this cruft"
-	echo "  -C 	print commit hashes"
+	echo "	-C 	print commit hashes"
 	echo "	-W 	which commit has hash object"
 	echo " 	-P 	walk pack file"
 	echo " 	-r 	resume (don't kill tree_file"
@@ -59,11 +59,11 @@ dump_blob() {
 				# awk 'match($0, /[0-9]{3}-[0-9]{2}-[0-9]{4}/) { print substr( $0, RSTART, RLENGTH)}'
 		fi
 	elif [ "$EXTRACT" == "p" ]; then
-		git cat-file -p $1 | egrep -i 'password|pw' | python ${SCRIPT_DIR}/extractor.py --password
+		git cat-file -p $1 | egrep -i 'password|pw' | python ${SCRIPT_DIR}/extractor.py --password -H $commit_hash
 	elif [ "$EXTRACT" == "k" ]; then
-		git cat-file -p $1 | egrep -i 'key' | python ${SCRIPT_DIR}/extractor.py --key
+		git cat-file -p $1 | egrep -i 'key' | python ${SCRIPT_DIR}/extractor.py --key -H $commit_hash
 	elif [ "$EXTRACT" == "c" ]; then
-		git cat-file -p $1 | egrep -i 'secret' | python ${SCRIPT_DIR}/extractor.py --secret
+		git cat-file -p $1 | egrep -i 'secret' | python ${SCRIPT_DIR}/extractor.py --secret -H $commit_hash
 	fi
 }
 
@@ -120,6 +120,7 @@ while getopts "g:w:f:x:shCWPr" opt; do
 			;;
 		r)
 			RESUME=true
+			echo "Resuming"
 			;;
 		h)
 			usage
@@ -163,9 +164,9 @@ else
 fi
 
 # if not resuming, get the trees
-if [[ "$RESUME" -ne true ]]; then
+if [[ $RESUME -eq false ]]; then
 
-	if [[ "$WALK_PACK" -eq true ]]; then
+	if [[ $WALK_PACK = true ]]; then
 		echo "Walking Pack"
 		echo "This may take awhile...."
 		for f in `ls .git/objects/pack/pack-*.pack`
@@ -175,6 +176,7 @@ if [[ "$RESUME" -ne true ]]; then
 		done
 		
 	else
+		echo "Crawling git-log using $FILTER"
 		# get the commit hashes that have $filter
 		git log --pretty=tformat:"%H" -- $FILTER > $WORK/commit_hashes
 	fi
@@ -191,8 +193,7 @@ if [[ "$RESUME" -ne true ]]; then
 		else
 			git cat-file -p $line^{tree} | grep $FILTER | \
 				cut -d " " -f 3 | cut -d "	" -f 1  >> $WORK/tree_hashes
-		fi
-		
+		fi	
 	done < $WORK/commit_hashes
 fi
 
