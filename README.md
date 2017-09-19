@@ -1,6 +1,6 @@
 # Grawler
 
-grawler.sh walks object trees in a git database searching for passwords, secrets, keys, and other sensitive information. It runs using git plumbing commands and can walk either from refs accumulated from git log, or from walking git pack files.
+grawler.sh recursively walks object trees in a git database searching for passwords, secrets, keys, and other sensitive information. It runs using git plumbing commands and can walk either from refs accumulated from git log, or from walking git pack files.
 
 ### Usage
 
@@ -24,4 +24,6 @@ Extract passwords and print commit hashes they are in
 
 .grawler.sh -C -g <my repo> -x p
 
+### Caveat
 
+Because of some bugs using awk for extraction, extractor.py is used instead. This needs to be in the same directory as grawler.sh. Killing the program may require a few attempts because python gets run alot once the walk gets going.
