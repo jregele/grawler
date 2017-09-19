@@ -20,7 +20,7 @@ SCRIPT_DIR=`pwd -P`
 
 
 usage() {
-	echo "usage: $program_name [-shCPr] [-g dir] [-w dir] [-f filter] [-x regex] [-W hash]"
+	echo "usage: $program_name [-hCPr] [-g dir] [-w dir] [-f filter] [-x regex] [-W hash]"
 	echo "	-g 	git directory"
 	echo "	-w 	working directory"
 	echo "	-f 	filter for git log"
@@ -85,7 +85,7 @@ walk_tree() {
 	fi
 }
 
-while getopts "g:w:f:x:shCWPr" opt; do
+while getopts "g:w:f:x:hCWPr" opt; do
 	case $opt in
 		g)
 			GIT_DIR=$OPTARG
@@ -112,6 +112,8 @@ while getopts "g:w:f:x:shCWPr" opt; do
 			echo "Printing commit hashes"
 			;;
 		W)
+			echo "This option is currently disabled because bash is stupid"
+			exit
 			OBJECT_HASH=$OPTARG
 			;;
 		P)
@@ -145,7 +147,7 @@ else
 fi
 
 # are we searching for a which commit?
-if [ -n $OBJECT_HASH ]; then
+if [ -n "${OBJECT_HASH}" ]; then
 	which_commit $OBJECT_HASH
 	exit
 fi
