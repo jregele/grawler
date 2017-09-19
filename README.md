@@ -23,7 +23,16 @@ A git directory is required (-g). Filtering (-f) assists if you have an idea of 
 
 Extract passwords and print commit hashes they are in
 
-.grawler.sh -C -g ~/myrepo -x p
+```bash
+./grawler.sh -C -g ~/myrepo -x p
+```
+
+You can always investigate more using 
+
+```bash
+git cat-file -p commit hash
+```
+
 
 ### Caveat
 
