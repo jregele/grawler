@@ -4,6 +4,7 @@ grawler.sh recursively walks object trees in a git database searching for "delet
 
 ### Usage
 
+```bash
 usage: ./grawler.sh [-hCPr] [-g dir] [-w dir] [-f filter] [-x regex] [-W hash]
 	-g 	git directory
 	-w 	working directory
@@ -14,7 +15,7 @@ usage: ./grawler.sh [-hCPr] [-g dir] [-w dir] [-f filter] [-x regex] [-W hash]
 	-W 	which commit has hash object
  	-P 	walk pack file
  	-r 	resume (don't kill tree_file)
-
+```
 
 A git directory is required (-g). Filtering (-f) assists if you have an idea of where to start in the git history, but will be ignored if walking pack files (-P). Nothing useful will happen if an extract (-x) option is not set. Currently supported are passwords (p), keys (k), secrets (c), and Social Security Numbers (s). The extraction for p, k, and c will print the matched regex until the end of the line, in hopes of exposing the values. For extract option s, only the SSN regex match will be output.
 
