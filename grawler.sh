@@ -24,7 +24,8 @@ usage() {
 	echo "	-g 	git directory"
 	echo "	-w 	working directory"
 	echo "	-f 	filter for git log"
-	echo "	-x 	extract: (p) Password, (k) Keys, (c) Secrets, (s) SSN"
+	echo "	-x 	extract: (p) Password, (k) Keys, (c) Secrets, (s) SSN, (r) Regex"
+	echo "	-R  regex for custom extractor (required for -x r"
 	echo "	-h 	print this cruft"
 	echo "	-C 	print commit hashes"
 	echo "	-W 	which commit has hash object"
@@ -102,6 +103,10 @@ while getopts "g:w:f:x:hCWPr" opt; do
 		x)
 			EXTRACT=$OPTARG
 			echo "Extract command is $EXTRACT"
+			;;
+		R)
+			REGEX=$OPTARG
+			echo "Custom Regex extractor $REGEX"
 			;;
 		s)
 			EXTRACT=$SSN_EXTRACT
@@ -185,11 +190,11 @@ if [[ $RESUME -eq false ]]; then
 
 
 	while read line; do
-		# if [[ "$WALK_PACK" -eq true ]]; then
-		# 	# we already cut it down so just echo the hash over
-		# 	git cat-file -p $line | cut -d " " 
-		# 	echo "$line" >> $WORK/tree_hashes
-		if [ -z "$FILTER" ]; then
+		if [[ "$WALK_PACK" -eq true ]]; then
+		 	# we already cut it down so just echo the hash over
+		 	# git cat-file -p $line | cut -d " " 
+		 	echo "$line" >> $WORK/tree_hashes
+		elif [ -z "$FILTER" ]; then
 			git cat-file -p $line^{tree} | \
 				cut -d " " -f 3 | cut -d "	" -f 1  >> $WORK/tree_hashes
 		else
