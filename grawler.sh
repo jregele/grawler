@@ -66,7 +66,7 @@ dump_blob() {
 	elif [ "$EXTRACT" == "c" ]; then
 		git cat-file -p $1 | egrep -i 'secret' | python ${SCRIPT_DIR}/extractor.py --secret -H $commit_hash
 	elif [ "$EXTRACT" == "r" ]; then
-		git cat-file -p $1 | egrep -i 'secret' | python ${SCRIPT_DIR}/extractor.py --custom $REGEX -H $commit_hash
+		git cat-file -p $1 | egrep -i "$REGEX" | python ${SCRIPT_DIR}/extractor.py --custom $REGEX -H $commit_hash
 	fi
 }
 
