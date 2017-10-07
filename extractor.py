@@ -10,6 +10,7 @@ parser.add_argument("--ssn", "-s", action="store_true")
 parser.add_argument("--password", "-p", action="store_true")
 parser.add_argument("--secret", "-c", action="store_true")
 parser.add_argument("--key", "-k", action="store_true")
+parser.add_argument("--custom", "-C", type=str, default=None)
 args = parser.parse_args()
 
 if args.ssn:
@@ -20,6 +21,9 @@ elif args.secret:
 	regex = re.compile(r"secret.*$", re.IGNORECASE)
 elif args.key:
 	regex = re.compile(r"key.*$", re.IGNORECASE)
+elif args.custom:
+	r = r"%s.*$" % args.custom
+	regex = re.compile(r, re.IGNORECASE)
 
 # print 'Extractor.py'
 

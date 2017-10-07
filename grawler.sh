@@ -65,6 +65,8 @@ dump_blob() {
 		git cat-file -p $1 | egrep -i 'key' | python ${SCRIPT_DIR}/extractor.py --key -H $commit_hash
 	elif [ "$EXTRACT" == "c" ]; then
 		git cat-file -p $1 | egrep -i 'secret' | python ${SCRIPT_DIR}/extractor.py --secret -H $commit_hash
+	elif [ "$EXTRACT" == "r" ]; then
+		git cat-file -p $1 | egrep -i 'secret' | python ${SCRIPT_DIR}/extractor.py --custom $REGEX -H $commit_hash
 	fi
 }
 
@@ -86,7 +88,7 @@ walk_tree() {
 	fi
 }
 
-while getopts "g:w:f:x:hCWPr" opt; do
+while getopts "g:w:f:x:hCWPrR:" opt; do
 	case $opt in
 		g)
 			GIT_DIR=$OPTARG
@@ -157,7 +159,12 @@ if [ -n "${OBJECT_HASH}" ]; then
 	exit
 fi
 
-
+if [ "$EXTRACT" == "r" ]; then
+	if [ -z "$REGEX" ]; then
+		echo "Custom Extractor not provided"
+		exit
+	fi
+fi
 
 # prepare working dir
 if [ -d $WORK ]; then
