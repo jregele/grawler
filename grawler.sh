@@ -6,6 +6,7 @@ GIT_DIR=
 WORK=/tmp
 FILTER=
 EXTRACT=
+MODE=
 
 SSN_EXTRACT='[0-9]{3}-[0-9]{2}-[0-9]{4}'
 PW_EXTRACT='-i password'
@@ -16,6 +17,7 @@ OBJECT_HASH=
 WALK_PACK=false
 RESUME=false
 
+
 SCRIPT_DIR=`pwd -P`
 EXTRACTOR='grawler_extractor.py'
 
@@ -24,6 +26,7 @@ usage() {
 	echo "usage: $program_name [-hCPr] [-g dir] [-w dir] [-f filter] [-x regex]"
 	echo "	-g 	git directory"
 	echo "	-w 	working directory"
+	echo "	-m 	Mode: (git) git log, (pack) pack files, (fs) filesystem"
 	echo "	-f 	filter for git log"
 	echo "	-x 	extract: (p) Password, (k) Keys, (c) Secrets, (s) SSN, (r) Regex"
 	echo "	-R 	regex for custom extractor (required for -x r"
@@ -87,7 +90,7 @@ walk_tree() {
 	fi
 }
 
-while getopts "g:w:f:x:hCPR:" opt; do
+while getopts "g:w:f:x:hCPR:m:" opt; do
 	case $opt in
 		g)
 			GIT_DIR=$OPTARG
@@ -109,17 +112,22 @@ while getopts "g:w:f:x:hCPR:" opt; do
 			REGEX=$OPTARG
 			echo "[ * ] Custom Regex extractor $REGEX"
 			;;
-		s)
-			EXTRACT=$SSN_EXTRACT
-			echo "[ * ] Extracting SSNs"
-			;;
 		C)
 			COMMITS=true
 			echo "[ * ] Printing commit hashes"
 			;;
-		P)
-			WALK_PACK=true
-			echo "[ * ] Walking pack file"
+		m)
+			MODE=$OPTARG
+			if [ "$MODE" == "git" ]; then
+				GIT_LOG=true
+				echo "[ * ] Using git log"
+			elif [ "$MODE" == "pack" ]; then
+				WALK_PACK=true
+				echo "[ * ] Walking pack file"
+			elif [ "$MODE" == "fs" ]; then
+				FS=true
+				echo "[ * ] FS Mode"
+			fi
 			;;
 		h)
 			usage
@@ -182,10 +190,28 @@ if [[ $WALK_PACK = true ]]; then
 		echo "[ ! ] No Pack files found"
 	fi
 	
-else
-	echo "[ * ] Crawling git-log using $FILTER"
+elif [[ $GIT_LOG = true ]]; then
+	if [[ $FILTER =~ .+ ]]; then
+		echo "[ * ] Crawling git-log using $FILTER"
+	else
+		echo "[ * ] Crawling git-log"
+	fi
 	# get the commit hashes that have $filter
 	git log --pretty=tformat:"%H" -- $FILTER > $WORK/commit_hashes
+elif [[ $FS = true ]]; then
+	echo "[ * ] Walking filesytem"
+	for f in `ls .git/objects`; do
+		if [[ $f =~ ^[0-9a-f]{2}$ ]]; then
+			for g in `ls .git/objects/$f`; do
+				echo $f$g >> $WORK/commit_hashes
+			done
+		fi
+	done
+
+
+else
+	echo "[ ! ] No Mode. Exiting"
+	exit
 fi
 
 if [ -f $WORK/commit_hashes ]; then
