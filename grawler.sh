@@ -17,20 +17,19 @@ WALK_PACK=false
 RESUME=false
 
 SCRIPT_DIR=`pwd -P`
+EXTRACTOR='grawler_extractor.py'
 
 
 usage() {
-	echo "usage: $program_name [-hCPr] [-g dir] [-w dir] [-f filter] [-x regex] [-W hash]"
+	echo "usage: $program_name [-hCPr] [-g dir] [-w dir] [-f filter] [-x regex]"
 	echo "	-g 	git directory"
 	echo "	-w 	working directory"
 	echo "	-f 	filter for git log"
 	echo "	-x 	extract: (p) Password, (k) Keys, (c) Secrets, (s) SSN, (r) Regex"
-	echo "	-R  regex for custom extractor (required for -x r"
+	echo "	-R 	regex for custom extractor (required for -x r"
 	echo "	-h 	print this cruft"
 	echo "	-C 	print commit hashes"
-	echo "	-W 	which commit has hash object"
 	echo " 	-P 	walk pack file"
-	echo " 	-r 	resume (don't kill tree_file"
 	echo "Only one type of extract may be performed at a time"
 }
 
@@ -60,13 +59,13 @@ dump_blob() {
 				# awk 'match($0, /[0-9]{3}-[0-9]{2}-[0-9]{4}/) { print substr( $0, RSTART, RLENGTH)}'
 		fi
 	elif [ "$EXTRACT" == "p" ]; then
-		git cat-file -p $1 | egrep -i 'password|pw' | python ${SCRIPT_DIR}/extractor.py --password -H $commit_hash
+		git cat-file -p $1 | egrep -i 'password|pw' | python ${SCRIPT_DIR}/${EXTRACTOR} --password -H $commit_hash
 	elif [ "$EXTRACT" == "k" ]; then
-		git cat-file -p $1 | egrep -i 'key' | python ${SCRIPT_DIR}/extractor.py --key -H $commit_hash
+		git cat-file -p $1 | egrep -i 'key' | python ${SCRIPT_DIR}/${EXTRACTOR} --key -H $commit_hash
 	elif [ "$EXTRACT" == "c" ]; then
-		git cat-file -p $1 | egrep -i 'secret' | python ${SCRIPT_DIR}/extractor.py --secret -H $commit_hash
+		git cat-file -p $1 | egrep -i 'secret' | python ${SCRIPT_DIR}/${EXTRACTOR} --secret -H $commit_hash
 	elif [ "$EXTRACT" == "r" ]; then
-		git cat-file -p $1 | egrep -i "$REGEX" | python ${SCRIPT_DIR}/extractor.py --custom $REGEX -H $commit_hash
+		git cat-file -p $1 | egrep -i "$REGEX" | python ${SCRIPT_DIR}/${EXTRACTOR} --custom $REGEX -H $commit_hash
 	fi
 }
 
@@ -88,48 +87,39 @@ walk_tree() {
 	fi
 }
 
-while getopts "g:w:f:x:hCWPrR:" opt; do
+while getopts "g:w:f:x:hCPR:" opt; do
 	case $opt in
 		g)
 			GIT_DIR=$OPTARG
-			echo "Git directory is $GIT_DIR"
+			echo "[ * ] Git directory is $GIT_DIR"
 			;;
 		w)
 			WORK=$OPTARG
-			echo "Working directory is $WORK"
+			echo "[ * ] Working directory is $WORK"
 			;;
 		f)
 			FILTER=$OPTARG
-			echo "Grep filter is $FILTER"
+			echo "[ * ] Grep filter is $FILTER"
 			;;
 		x)
 			EXTRACT=$OPTARG
-			echo "Extract command is $EXTRACT"
+			echo "[ * ] Extract command is $EXTRACT"
 			;;
 		R)
 			REGEX=$OPTARG
-			echo "Custom Regex extractor $REGEX"
+			echo "[ * ] Custom Regex extractor $REGEX"
 			;;
 		s)
 			EXTRACT=$SSN_EXTRACT
-			echo "Extracting SSNs"
+			echo "[ * ] Extracting SSNs"
 			;;
 		C)
 			COMMITS=true
-			echo "Printing commit hashes"
-			;;
-		W)
-			echo "This option is currently disabled because bash is stupid"
-			exit
-			OBJECT_HASH=$OPTARG
+			echo "[ * ] Printing commit hashes"
 			;;
 		P)
 			WALK_PACK=true
-			echo "Walking pack file"
-			;;
-		r)
-			RESUME=true
-			echo "Resuming"
+			echo "[ * ] Walking pack file"
 			;;
 		h)
 			usage
@@ -140,7 +130,7 @@ done
 
 # make sure GIT_DIR is set
 if [ -z $GIT_DIR ]; then
-	echo "-g is required"
+	echo "[ ! ] -g is required"
 	usage
 	exit 
 fi
@@ -149,7 +139,7 @@ fi
 if [ -d $GIT_DIR ]; then
 	cd $GIT_DIR
 else
-	echo "$GIT_DIR is not a directory"
+	echo "[ ! ] $GIT_DIR is not a directory"
 	exit
 fi
 
@@ -161,41 +151,44 @@ fi
 
 if [ "$EXTRACT" == "r" ]; then
 	if [ -z "$REGEX" ]; then
-		echo "Custom Extractor not provided"
+		echo "[ ! ] Custom Extractor not provided"
 		exit
 	fi
 fi
 
 # prepare working dir
 if [ -d $WORK ]; then
-	rm $WORK/commit_hashes
-	if [[ "$RESUME" -ne true ]]; then
+	if [ -f $WORK/commit_hashes ]; then
+		rm $WORK/commit_hashes
+	fi
+	if [ -f $WORK/tree_hashes ]; then
 		rm $WORK/tree_hashes
 	fi
 else
-	echo 'Making work directory $WORK'
+	echo '[ * ] Making work directory $WORK'
 	mkdir $WORK
 fi
 
-# if not resuming, get the trees
-if [[ $RESUME -eq false ]]; then
 
-	if [[ $WALK_PACK = true ]]; then
-		echo "Walking Pack"
-		echo "This may take awhile...."
-		for f in `ls .git/objects/pack/pack-*.pack`
-		do
+if [[ $WALK_PACK = true ]]; then
+	echo "[ * ] Walking Pack"
+	echo "[ * ] This may take awhile...."
+	if [ -f .git/objects/pack-*.pack ]; then
+		for f in `ls .git/objects/pack/pack-*.pack`; do
 			echo $f
 			git verify-pack -v $f | egrep '(commit|tree|blob)' | cut -d " " -f 1 >> $WORK/commit_hashes
 		done
-		
 	else
-		echo "Crawling git-log using $FILTER"
-		# get the commit hashes that have $filter
-		git log --pretty=tformat:"%H" -- $FILTER > $WORK/commit_hashes
+		echo "[ ! ] No Pack files found"
 	fi
+	
+else
+	echo "[ * ] Crawling git-log using $FILTER"
+	# get the commit hashes that have $filter
+	git log --pretty=tformat:"%H" -- $FILTER > $WORK/commit_hashes
+fi
 
-
+if [ -f $WORK/commit_hashes ]; then
 	while read line; do
 		if [[ "$WALK_PACK" -eq true ]]; then
 		 	# we already cut it down so just echo the hash over
@@ -209,10 +202,14 @@ if [[ $RESUME -eq false ]]; then
 				cut -d " " -f 3 | cut -d "	" -f 1  >> $WORK/tree_hashes
 		fi	
 	done < $WORK/commit_hashes
+else
+	echo "[ ! ] No commits found"
 fi
 
 # iterate through trees looking for blobs
-while read line; do
-	# walk tree with depth 0
-	walk_tree $line
-done < $WORK/tree_hashes
+if [ -f $WORK/tree_hashes ]; then
+	while read line; do
+		# walk tree with depth 0
+		walk_tree $line
+	done < $WORK/tree_hashes
+fi

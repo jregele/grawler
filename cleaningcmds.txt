@@ -1,0 +1,19 @@
+
+# this assumes that secrets.config is the file you want to find
+git log --all --pretty=format: --name-only --diff-filter=D | grep secrets.config | grep -v warning
+
+# show all objects that reference secrets.config
+git rev-list --objects --all | grep secrets.config
+
+
+# rewrite history
+git filter-branch --index-filter \
+'git rm --ignore-unmatch --cached secrets.config'
+
+
+# clean out refs
+rm -Rf .git/refs/original
+rm -Rf .git/logs/
+git gc
+
+git prune --expire now
