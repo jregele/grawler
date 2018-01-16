@@ -55,14 +55,14 @@ dump_blob() {
 	commit_hash=$1
 	if [ "$EXTRACT" == "s" ]; then
 		if [ "$COMMITS" = true ]; then
-			git cat-file -p $1 | egrep '[0-9]{3}-[0-9]{2}-[0-9]{4}' | python ${SCRIPT_DIR}/extractor.py --ssn -H $commit_hash
+			git cat-file -p $1 | egrep '[0-9]{3}-[0-9]{2}-[0-9]{4}' | python ${SCRIPT_DIR}/${EXTRACTOR} --ssn -H $commit_hash
 		else
 			# git cat-file -p $1 | egrep '[0-9]{3}-[0-9]{2}-[0-9]{4}' | awk 'match($0, /[0-9]{3}-[0-9]{2}-[0-9]{4}/) { print substr( $0, RSTART, RLENGTH)}'
-			git cat-file -p $1 | egrep '[0-9]{3}-[0-9]{2}-[0-9]{4}' | python ${SCRIPT_DIR}/extractor.py --ssn
+			git cat-file -p $1 | egrep '[0-9]{3}-[0-9]{2}-[0-9]{4}' | python ${SCRIPT_DIR}/${EXTRACTOR} --ssn
 				# awk 'match($0, /[0-9]{3}-[0-9]{2}-[0-9]{4}/) { print substr( $0, RSTART, RLENGTH)}'
 		fi
 	elif [ "$EXTRACT" == "p" ]; then
-		git cat-file -p $1 | egrep -i 'password|pw' | python ${SCRIPT_DIR}/${EXTRACTOR} --password -H $commit_hash
+		git cat-file -p $1 | egrep -i 'password|pw' | ${EXTRACTOR} --password -H $commit_hash
 	elif [ "$EXTRACT" == "k" ]; then
 		git cat-file -p $1 | egrep -i 'key' | python ${SCRIPT_DIR}/${EXTRACTOR} --key -H $commit_hash
 	elif [ "$EXTRACT" == "c" ]; then
@@ -138,9 +138,14 @@ done
 
 # make sure GIT_DIR is set
 if [ -z $GIT_DIR ]; then
-	echo "[ ! ] -g is required"
-	usage
-	exit 
+	GIT_DIR=`pwd`
+	if [ -z $GIT_DIR/.git ]; then
+		echo "[ ! ] Not a git repository"
+		exit
+	fi
+	# echo "[ ! ] -g is required"
+	# usage
+	# exit 
 fi
 
 # make sure GIT_DIR is a dir
@@ -181,14 +186,17 @@ fi
 if [[ $WALK_PACK = true ]]; then
 	echo "[ * ] Walking Pack"
 	echo "[ * ] This may take awhile...."
-	if [ -f .git/objects/pack-*.pack ]; then
-		for f in `ls .git/objects/pack/pack-*.pack`; do
-			echo $f
-			git verify-pack -v $f | egrep '(commit|tree|blob)' | cut -d " " -f 1 >> $WORK/commit_hashes
-		done
-	else
-		echo "[ ! ] No Pack files found"
-	fi
+
+
+
+
+	for f in `ls .git/objects/pack/pack-*.pack`; do
+		git verify-pack -v $f | egrep '(commit|tree|blob)' | cut -d " " -f 1 >> $WORK/commit_hashes
+	done
+
+
+
+
 	
 elif [[ $GIT_LOG = true ]]; then
 	if [[ $FILTER =~ .+ ]]; then
