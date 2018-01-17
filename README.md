@@ -1,15 +1,16 @@
 # Grawler
+##### Released at ShmooCon 2018
 
 grawler.sh recursively walks object trees in a git database searching for "deleted" passwords, secrets, keys, and other sensitive information. It runs using git plumbing commands and can walk from refs accumulated from git log, git pack files, or the file system.
 
 ### Usage
 
 ```bash
-usage: grawler.sh [-h] [-m mode] [-x extractor] [-f filter] [-R regex] [-g dir] [-w dir] "
+usage: grawler [-h] [-m mode] [-x extractor] [-f filter] [-R regex] [-g dir] [-w dir] "
       -m  Mode: (git) git log, (pack) pack files, (fs) filesystem"
       -x  extractor: (p) Password, (k) Keys, (c) Secrets, (s) SSN, (r) Regex"
       -f  filter for git log"
-      -R  regex for custom extractor (required for -x r"
+      -R  regex for custom extractor (required for -x r)
       -g  git directory (optional)"
       -w  working directory (optional)"
       -h  print this cruft"
@@ -37,19 +38,19 @@ Filtering (-f) assists if you have an idea of where to start in the git history,
 Extract passwords in git mode
 
 ```bash
-grawler.sh -x p -m git
+grawler -x p -m git
 ```
 
 Extract encryption keys using pack mode
 
 ```bash
-grawler.sh -x k -m pack
+grawler -x k -m pack
 ```
 
 Extract lines with "secret" in fs mode in another repo with local working directory. This will create tree_hash and commit_hash files in the current directory. 
 
 ```bash
-grawler.sh -x s -m fs -g ~/myrepo -w .
+grawler -x s -m fs -g ~/myrepo -w .
 ```
 
 You can always investigate more using 
