@@ -7,13 +7,8 @@ git rev-list --objects --all | grep secrets.config
 
 
 # rewrite history
-git filter-branch --index-filter \
-'git rm --ignore-unmatch --cached secrets.config'
+git filter-branch --index-filter 'git rm --ignore-unmatch --cached secrets.config'
 
 
 # clean out refs
-rm -Rf .git/refs/original
-rm -Rf .git/logs/
-git gc
-
-git prune --expire now
+rm -Rf .git/refs/original & rm -Rf .git/logs/ & git gc & git prune --expire now

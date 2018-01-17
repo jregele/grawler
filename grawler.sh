@@ -23,17 +23,15 @@ EXTRACTOR='grawler_extractor.py'
 
 
 usage() {
-	echo "usage: $program_name [-hCPr] [-g dir] [-w dir] [-f filter] [-x regex]"
-	echo "	-g 	git directory"
-	echo "	-w 	working directory"
+	echo "usage: $program_name [-h] [-m mode] [-x extractor] [-f filter] [-R regex] [-g dir] [-w dir] "
 	echo "	-m 	Mode: (git) git log, (pack) pack files, (fs) filesystem"
+	echo "	-x 	extractor: (p) Password, (k) Keys, (c) Secrets, (s) SSN, (r) Regex"
 	echo "	-f 	filter for git log"
-	echo "	-x 	extract: (p) Password, (k) Keys, (c) Secrets, (s) SSN, (r) Regex"
 	echo "	-R 	regex for custom extractor (required for -x r"
+	echo "	-g 	git directory (optional)"
+	echo "	-w 	working directory (optional)"
 	echo "	-h 	print this cruft"
-	echo "	-C 	print commit hashes"
-	echo " 	-P 	walk pack file"
-	echo "Only one type of extract may be performed at a time"
+	echo "Only one extractor may be performed at a time"
 }
 
 which_commit() {
@@ -55,20 +53,20 @@ dump_blob() {
 	commit_hash=$1
 	if [ "$EXTRACT" == "s" ]; then
 		if [ "$COMMITS" = true ]; then
-			git cat-file -p $1 | egrep '[0-9]{3}-[0-9]{2}-[0-9]{4}' | python ${SCRIPT_DIR}/${EXTRACTOR} --ssn -H $commit_hash
+			git cat-file -p $1 | egrep '[0-9]{3}-[0-9]{2}-[0-9]{4}' | ${EXTRACTOR} --ssn -H $commit_hash
 		else
 			# git cat-file -p $1 | egrep '[0-9]{3}-[0-9]{2}-[0-9]{4}' | awk 'match($0, /[0-9]{3}-[0-9]{2}-[0-9]{4}/) { print substr( $0, RSTART, RLENGTH)}'
-			git cat-file -p $1 | egrep '[0-9]{3}-[0-9]{2}-[0-9]{4}' | python ${SCRIPT_DIR}/${EXTRACTOR} --ssn
+			git cat-file -p $1 | egrep '[0-9]{3}-[0-9]{2}-[0-9]{4}' | ${EXTRACTOR} --ssn
 				# awk 'match($0, /[0-9]{3}-[0-9]{2}-[0-9]{4}/) { print substr( $0, RSTART, RLENGTH)}'
 		fi
 	elif [ "$EXTRACT" == "p" ]; then
 		git cat-file -p $1 | egrep -i 'password|pw' | ${EXTRACTOR} --password -H $commit_hash
 	elif [ "$EXTRACT" == "k" ]; then
-		git cat-file -p $1 | egrep -i 'key' | python ${SCRIPT_DIR}/${EXTRACTOR} --key -H $commit_hash
+		git cat-file -p $1 | egrep -i 'key' | ${EXTRACTOR} --key -H $commit_hash
 	elif [ "$EXTRACT" == "c" ]; then
-		git cat-file -p $1 | egrep -i 'secret' | python ${SCRIPT_DIR}/${EXTRACTOR} --secret -H $commit_hash
+		git cat-file -p $1 | egrep -i 'secret' | ${EXTRACTOR} --secret -H $commit_hash
 	elif [ "$EXTRACT" == "r" ]; then
-		git cat-file -p $1 | egrep -i "$REGEX" | python ${SCRIPT_DIR}/${EXTRACTOR} --custom $REGEX -H $commit_hash
+		git cat-file -p $1 | egrep -i "$REGEX" | ${EXTRACTOR} --custom $REGEX -H $commit_hash
 	fi
 }
 
@@ -90,7 +88,7 @@ walk_tree() {
 	fi
 }
 
-while getopts "g:w:f:x:hCPR:m:" opt; do
+while getopts "g:w:f:x:hPR:m:" opt; do
 	case $opt in
 		g)
 			GIT_DIR=$OPTARG
@@ -111,10 +109,6 @@ while getopts "g:w:f:x:hCPR:m:" opt; do
 		R)
 			REGEX=$OPTARG
 			echo "[ * ] Custom Regex extractor $REGEX"
-			;;
-		C)
-			COMMITS=true
-			echo "[ * ] Printing commit hashes"
 			;;
 		m)
 			MODE=$OPTARG
@@ -139,10 +133,7 @@ done
 # make sure GIT_DIR is set
 if [ -z $GIT_DIR ]; then
 	GIT_DIR=`pwd`
-	if [ -z $GIT_DIR/.git ]; then
-		echo "[ ! ] Not a git repository"
-		exit
-	fi
+	
 	# echo "[ ! ] -g is required"
 	# usage
 	# exit 
@@ -151,16 +142,20 @@ fi
 # make sure GIT_DIR is a dir
 if [ -d $GIT_DIR ]; then
 	cd $GIT_DIR
+	if [[ ! -d .git ]]; then
+		echo "[ ! ] Not a git repository"
+		exit
+	fi
 else
 	echo "[ ! ] $GIT_DIR is not a directory"
 	exit
 fi
 
 # are we searching for a which commit?
-if [ -n "${OBJECT_HASH}" ]; then
-	which_commit $OBJECT_HASH
-	exit
-fi
+# if [ -n "${OBJECT_HASH}" ]; then
+# 	which_commit $OBJECT_HASH
+# 	exit
+# fi
 
 if [ "$EXTRACT" == "r" ]; then
 	if [ -z "$REGEX" ]; then
